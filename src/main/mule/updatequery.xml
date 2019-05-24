@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="b89b91a9-e771-45a6-9b38-f2182f8654f0" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="17acc2f8-11bb-45ed-b1a0-6eb80e2604af" file="local.properties" />
+	<flow name="example3Flow" doc:id="1089b50f-fdc0-4671-8d38-b12c914716e4" >
+		<http:listener doc:name="Listener" doc:id="231c6ed1-f8d8-4d70-a615-9969a1971c93" config-ref="HTTP_Listener_config" path="/example5"/>
+		<set-variable value="#[payload]" doc:name="Set Variable" doc:id="03531aba-06fd-4896-b00a-5bd88a80a04f" variableName="originalPayload"/>
+		<set-variable value="#[[]]" doc:name="Set Variable" doc:id="5d474955-f974-455a-be3f-c5e97613944f" variableName="acc1"/>
+		<ee:transform doc:name="Transform Message" doc:id="6a7b8481-f045-43b9-ab9c-738aaebc7685">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+   payload pluck ({
+     'key' : $$,
+     'value' :$
+     }
+     
+)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="fa8d2da9-7065-4960-ac4d-28c55de2a02e" >
+			<choice doc:name="Choice" doc:id="e5d2ac7c-b1c7-4922-bab8-0a2bc415c65c" >
+				<when expression="#[payload.value is String]">
+					<ee:transform doc:name="Transform Message" doc:id="5f3c547b-71a2-4d64-83f4-1c7844c920c4">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.key ++ "=" ++ "'"++ payload.value ++"'"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+					<set-variable value="#[%dw 2.0
+output application/json
+---
+vars.acc1 ++ [payload]]" doc:name="Set Variable" doc:id="b6653244-ed8d-4778-97d4-353e7069bda3" variableName="acc1" />
+				</when>
+				<otherwise >
+					<logger level="INFO" doc:name="Logger" doc:id="245cc3e0-d02f-4ce7-8b95-affe7eb3d937" />
+				</otherwise>
+			</choice>
+		</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="d399bb15-c5a0-467a-8272-84a326149407" message='#[vars.acc1]' />
+		<ee:transform doc:name="Transform Message" doc:id="e9a88881-50de-4946-a625-05d5c65ca70e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.acc1 as Array joinBy ","]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="f989d314-f360-432f-b7bd-ee9a941a866e" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="partialUpdateQuery" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.originalPayload.ChangeEventHeader.changeType default "" ++" mytable " ++ " SET " ++ payload default "" ++ " WHERE " ++ " ID " ++ " IN "  ]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<set-variable value="#[[]]" doc:name="Set Variable" doc:id="4991a056-aeb4-42bf-bc1d-0abfeb6185e6" variableName="acc1" />
+		<ee:transform doc:name="Transform Message" doc:id="ee1a1c18-4426-4507-8278-0b7e53ac1868">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+vars.originalPayload.ChangeEventHeader.recordIds]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="9acbdcdb-12b3-4185-8cc0-3c61e8abbbaf">
+			<ee:transform doc:name="Transform Message" doc:id="0e53376a-e387-46a9-a9e9-47f58083aff3">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="acc1"><![CDATA[%dw 2.0
+output application/json
+---
+vars.acc1 as Array default [] ++ ["'"++  trim(payload default "") ++"'"]]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="216b9fd6-01e5-49a5-8747-18631907a619">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+vars.acc1 as Array joinBy ","]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="c1f95f6e-a9f8-4593-b9b1-6172d1f6540d">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.partialUpdateQuery default "" ++ "["++ payload++"]"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="72425039-66fd-4dbd-88b8-038662d01bf4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.originalPayload.ChangeEventHeader.recordIds as Array reduce ((elt, acc) -> "'" ++ acc default "" ++"'" ++ "," ++ "'" ++ elt ++ "'")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="d113d27b-c2c2-4a2d-bad1-8b65b5f083ff" message="#[p('successlabel')]"/>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="d0dab9c8-9252-4ceb-9a9f-039bee3b3e12" />
+	</flow>
+	<flow name="updatequeryFlow" doc:id="00a3a1af-2428-4b98-836e-050d80fa990c" >
+		<http:listener doc:name="Listener" doc:id="90d335f1-31c6-4853-90fd-0a9299b28044" config-ref="HTTP_Listener_config" path="/three"/>
+		<logger level="INFO" doc:name="Logger" doc:id="630338c8-d11d-48ba-a8d0-6eb479f04ddb" message="the payload is ::: #[now()]"/>
+		<ee:transform doc:name="Transform Message" doc:id="53972e08-d281-43d4-a022-3bf18c0a4f88" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+readUrl("https://jsonplaceholder.typicode.com/posts/1", "application/json")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="76099392-b36b-458f-bb11-b3a37bce1292" message="#[p('successlabel')]"/>
+		<set-payload value='#[payload]' doc:name="Set Payload" doc:id="e6b8f31d-bce3-4bf0-80a7-049f6f394820" />
+	</flow>
+</mule>
